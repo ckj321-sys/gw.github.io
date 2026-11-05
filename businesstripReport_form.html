@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>출장신청서</title>
+
+<style>
+    body{
+        font-family:'맑은 고딕';
+        margin:20px;
+    }
+
+    table{
+        width:100%;
+        border-collapse:collapse;
+    }
+
+    th, td{
+        border:1px solid #000;
+        padding:8px;
+    }
+
+    th{
+        background:#d9d9d9;
+        text-align:center;
+    }
+
+    .title{
+        font-size:30px;
+        font-weight:bold;
+        text-align:center;
+        height:80px;
+    }
+
+    input[type=text],
+    input[type=date],
+    input[type=datetime-local]{
+        width:100%;
+        box-sizing:border-box;
+        border:none;
+        outline:none;
+        padding:5px;
+    }
+
+    textarea{
+        width:100%;
+        height:200px;
+        box-sizing:border-box;
+        border:none;
+        outline:none;
+        resize:vertical;
+    }
+
+    .btn{
+        padding:8px 16px;
+        margin-right:5px;
+    }
+
+    .approver{
+        text-align:center;
+    }
+</style>
+<script src="common.js"></script>
+<script>
+
+window.onload = function(){
+    createHourOptions("startDateTime");
+    createHourOptions("endDateTime");
+    
+    if(!bindData())
+    {
+        initializeForm();    
+    }
+};
+
+function initializeForm(){
+    document.getElementById("writeDate").value = new Date().toISOString().substring(0,10);
+    document.getElementById("approvalNo").value = generateApprovalNo();
+}
+
+function changeDate(){
+    document.getElementById("approvalNo").value = generateApprovalNo();
+}
+
+function generateApprovalNo(){
+
+    const today = document.getElementById("writeDate").value;
+    const ymd = today.replaceAll("-", "");
+
+    let seq = localStorage.getItem("BT_SEQ_" + ymd);
+    seq = seq ? parseInt(seq) : 0;
+
+    seq++;
+
+    localStorage.setItem("BT_SEQ_" + ymd, seq);
+
+    return "BT-" +
+        empNo +
+        "-" +
+        ymd +
+        "-" +
+        String(seq).padStart(2,'0');
+}
+
+function saveData(){
+
+    const id =   document.getElementById("approvalNo").value || crypto.randomUUID();
+
+    const docs = getDocuments();
+    const data = {
+        id : id,
+        formType : "BUSINESS_TRIP",
+        title : document.getElementById("title").value,
+        createDate : new Date().toISOString().substring(0,10),
+        documentNo : document.getElementById("approvalNo").value,
+        data :{
+            approvalNo : document.getElementById("approvalNo").value,
+            writeDate : document.getElementById("writeDate").value,
+            dept : document.getElementById("dept").value,
+            writer : document.getElementById("writer").value,
+            title : document.getElementById("title").value,
+            projectCode : document.getElementById("projectCode").value,
+            projectName : document.getElementById("projectName").value,
+            customerName : document.getElementById("customerName").value,
+            tripPlace : document.getElementById("tripPlace").value,
+            startDate : document.getElementById("startDate").value,
+            endDate : document.getElementById("endDate").value,
+            startDateTime : document.getElementById("startDateTime").value,
+            endDateTime : document.getElementById("endDateTime").value,
+            tripPurpose : document.getElementById("tripPurpose").value,
+            approver1 : document.getElementById("approver1").value,
+            approver2 : document.getElementById("approver2").value,
+            approver3 : document.getElementById("approver3").value,
+            approver4 : document.getElementById("approver4").value,
+            approver5 : document.getElementById("approver5").value,
+            approver6 : document.getElementById("approver6").value,
+        }
+    };
+
+    const idx = docs.findIndex(x=>x.id===id);
+
+    if(idx>=0)
+        docs[idx]=data;
+    else
+        docs.push(data);
+
+    saveDocuments(docs);
+
+    location.href = `businesstrip.html?docId=${encodeURIComponent(id)}`;
+
+}
+
+function adjustSeq(val)
+{
+    const today = document.getElementById("writeDate").value;
+    const ymd = today.replaceAll("-", "");
+    
+    let seq = localStorage.getItem("BT_SEQ_" + ymd);
+
+    if(parseInt(seq) + val > 0)
+        seq = parseInt(seq) + val;
+
+    localStorage.setItem("BT_SEQ_" + ymd, seq);
+    document.getElementById("approvalNo").value = "BT-" + empNo + "-" + ymd + "-" + String(seq).padStart(2,'0');
+}
+
+function bindData(){
+
+    const docId= sessionStorage.getItem("selectedDocId");
+
+    if(!docId)
+        return false;
+
+    const docs = getDocuments();
+    const doc = docs.find(x=>x.id===docId);
+
+    if(!doc)
+        return false;
+
+    document.getElementById("approvalNo").value = doc.data.approvalNo || "";
+    document.getElementById("writeDate").value = doc.data.writeDate || "";
+    document.getElementById("dept").value = doc.data.dept || "";
+    document.getElementById("writer").value = doc.data.writer || "";
+    document.getElementById("title").value = doc.data.title || "";
+    document.getElementById("projectCode").value = doc.data.projectCode || "";
+    document.getElementById("projectName").value = doc.data.projectName || "";
+    document.getElementById("customerName").value = doc.data.customerName || "";
+    document.getElementById("tripPlace").value = doc.data.tripPlace || "";
+    document.getElementById("startDate").value = doc.data.startDate || "";
+    document.getElementById("endDate").value = doc.data.endDate || "";
+    document.getElementById("startDateTime").value = doc.data.startDateTime || "";
+    document.getElementById("endDateTime").value = doc.data.endDateTime || "";
+    document.getElementById("tripPurpose").value = doc.data.tripPurpose || "";
+    document.getElementById("approver1").value = doc.data.approver1 || "";
+    document.getElementById("approver2").value = doc.data.approver2 || "";
+    document.getElementById("approver3").value = doc.data.approver3 || "";
+    document.getElementById("approver4").value = doc.data.approver4 || "";
+    document.getElementById("approver5").value = doc.data.approver5 || "";
+    document.getElementById("approver6").value = doc.data.approver6 || "";
+
+    return true;
+}
+
+function createHourOptions(selectId) {
+    const select = document.getElementById(selectId);
+
+    for (let i = 0; i < 24; i++) {
+        const hh = String(i).padStart(2, '0');
+        select.innerHTML += `<option value="${hh}시">${hh}시</option>`;
+    }
+}
+
+</script>
+
+</head>
+
+<body>
+
+    <div style="margin-bottom:10px;">
+    <button class="btn" onclick="history.back();">
+    뒤로가기
+    </button>
+    <button class="btn" onclick="saveData()">
+    저장
+    </button>
+
+    <table>
+    <tr>
+        <td colspan="11" class="title">
+            출장신청서
+        </td>
+    </tr>
+    <tr>
+        <th>품의번호</th>
+        <td colspan="3">
+            <input type="text" id="approvalNo">
+            <button onclick="adjustSeq(1)">+</button>
+            <button onclick="adjustSeq(-1)">-</button>
+        </td>
+        <th rowspan="4">
+            결재
+        </th>
+        <th>
+            <input id="approver1" class="approver" type="text">
+        </th>
+        <th>
+            <input id="approver2" class="approver" type="text">
+        </th>
+        <th>
+            <input id="approver3" class="approver" type="text">
+        </th>
+        <th>
+            <input id="approver4" class="approver" type="text">
+        </th>
+        <th>
+            <input id="approver5" class="approver" type="text">
+        </th>
+        <th>
+            <input id="approver6" class="approver" type="text">
+        </th>
+    </tr>
+    <tr>
+        <th>작성일자</th>
+        <td colspan="3">
+            <input type="date" id="writeDate" oninput="changeDate()">
+        </td>
+        <td rowspan="3"></td>
+        <td rowspan="3"></td>
+        <td rowspan="3"></td>
+        <td rowspan="3"></td>
+        <td rowspan="3"></td>
+        <td rowspan="3"></td>
+    </tr>
+    <tr>
+        <th>기안부서</th>
+        <td colspan="3">
+            <input type="text" id="dept">
+        </td>
+    </tr>
+    <tr>
+        <th>기안자</th>
+        <td colspan="3">
+            <input type="text" id="writer">
+        </td>
+    </tr>
+    <tr>
+        <th>제목</th>
+        <td colspan="10">
+            <input type="text" id="title">
+        </td>
+    </tr>
+    <tr>
+        <th>프로젝트 코드</th>
+        <td colspan="2">
+            <input type="text" id="projectCode">
+        </td>
+        <th>프로젝트 명</th>
+        <td colspan="7">
+            <input type="text" id="projectName">
+        </td>
+    </tr>
+    <tr>
+        <th>고객명</th>
+        <td colspan="10">
+            <input type="text" id="customerName">
+        </td>
+    </tr>
+    <tr>
+        <th>출장지</th>
+        <td colspan="10">
+            <input type="text" id="tripPlace">
+        </td>
+    </tr>
+    <tr>
+        <th rowspan="2">신청기간</th>
+        <td>출발</td>
+        <td colspan="2">
+            <input type="date" id="startDate">
+        </td>
+        <td>
+            <select id="startDateTime"></select>
+        </td>
+        <td colspan="6">
+        </td>
+    </tr>
+    <tr>
+        <td>도착</td>
+        <td colspan="2">
+            <input type="date" id="endDate">
+        </td>
+        <td>
+            <select id="endDateTime"></select>
+        </td>
+        <td colspan="6">
+        </td>
+    </tr>
+    <tr>
+        <th>출장목적</th>
+        <td colspan="10">
+            <input  type="text" id="tripPurpose"></input>
+        </td>
+    </tr>
+    </table>
+
+</body>
+</html>
