@@ -1,0 +1,795 @@
+<html>
+	<head>
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+	<script src="common.js"></script>
+	<style>
+		body{
+			font-family:맑은 고딕;
+			margin:30px;
+		}
+
+		table{
+			border-collapse:collapse;
+		}
+
+		table tr th {
+			background-color:#d9d9d9;
+		}
+
+		table tr, th, td {
+			border-collapse:collapse;
+			border:1px solid #000;padding:8px;
+			text-align:center;
+		}
+
+		.header {
+			font-weight:bold;
+		}
+		.border_edge {
+			border-left: 3px solid;
+			border-right: 3px solid;
+		}
+	</style>
+
+	<script>
+
+
+	window.onload = function(){
+
+		const docId = getDocId();
+
+		if (!docId) {
+			alert("문서정보가 없습니다.");
+			return;
+		}
+
+		const docs = getDocuments();
+		const doc = docs.find(x => x.id === docId);
+
+		if (!doc) {
+			alert("문서를 찾을 수 없습니다.");
+			return;
+		}
+
+		bindData(doc);
+
+	};
+
+	function bindData(doc){
+
+		if(!doc)
+			return;
+
+		
+		document.getElementById("approvalNo").innerHTML = doc.data.approvalNo || "";
+		document.getElementById("writeDate").innerHTML = doc.data.writeDate || "";
+		document.getElementById("dept").innerHTML = doc.data.dept || "";
+		document.getElementById("writer").innerHTML = doc.data.writer || "";
+		document.getElementById("title").innerHTML = doc.data.title || "";
+		document.getElementById("projectCode").innerHTML = doc.data.projectCode || "";
+		document.getElementById("projectName").innerHTML = doc.data.projectName || "";
+		document.getElementById("customerName").innerHTML = doc.data.customerName || "";
+		document.getElementById("tripPlace").innerHTML = doc.data.tripPlace || "";
+		document.getElementById("startDate").innerHTML = doc.data.startDate || "";
+		document.getElementById("endDate").innerHTML = doc.data.endDate || "";
+		document.getElementById("startDate2").innerHTML = doc.data.startDate || "";
+		document.getElementById("endDate2").innerHTML = doc.data.endDate || "";
+		document.getElementById("startDateTime").innerHTML = doc.data.startDateTime || "";
+		document.getElementById("endDateTime").innerHTML = doc.data.endDateTime || "";
+		document.getElementById("startDateTime2").innerHTML = doc.data.startDateTime || "";
+		document.getElementById("endDateTime2").innerHTML = doc.data.endDateTime || "";
+		document.getElementById("tripPurpose").innerHTML = doc.data.tripPurpose || "";
+		document.getElementById("approver1").innerHTML = doc.data.approver1 || "";
+		document.getElementById("approver2").innerHTML = doc.data.approver2 || "";
+		document.getElementById("approver3").innerHTML = doc.data.approver3 || "";
+		document.getElementById("approver4").innerHTML = doc.data.approver4 || "";
+		document.getElementById("approver5").innerHTML = doc.data.approver5 || "";
+		document.getElementById("approver6").innerHTML = doc.data.approver6 || "";
+
+		doc.data.expenses.forEach((item, idx)=>{
+
+			const i = idx + 1;
+
+			document.getElementById(`gubun${i}`).innerHTML = item.gubun;
+			document.getElementById(`contents${i}`).innerHTML = item.contents;
+			document.getElementById(`cnt${i}`).innerHTML = item.cnt;
+			document.getElementById(`price${i}`).innerHTML = item.price;
+			document.getElementById(`sumprice${i}`).innerHTML = item.sumprice;
+			document.getElementById(`currency${i}`).innerHTML = item.currency;
+			document.getElementById(`exchange${i}`).innerHTML = item.exchange;
+			document.getElementById(`totalPrice${i}`).innerHTML = item.totalPrice;
+			document.getElementById(`remark${i}`).innerHTML = item.remark;
+		});
+
+		const userName =  document.getElementById("approver1").innerHTML;
+
+		document.getElementById("approver1_stamp").innerHTML = `
+			<svg xmlns="http://www.w3.org/2000/svg" width="60" height="60" viewBox="0 0 100 100">
+				<circle cx="50" cy="50" r="48"
+						fill="none"
+						stroke="#c00000"
+						stroke-width="3"/>
+
+				<text x="50"
+					y="60"
+					text-anchor="middle"
+					font-size="30"
+					font-weight="bold"
+					fill="#c00000"
+					font-family="Malgun Gothic, sans-serif">
+					${userName}
+				</text>
+			</svg>`;
+
+	}
+
+
+	function rgbToArgb(rgb) {
+
+		if (!rgb || rgb === 'rgba(0, 0, 0, 0)') {
+			return null;
+		}
+
+		const match = rgb.match(/\d+/g);
+
+		if (!match) {
+			return null;
+		}
+
+		return (
+			"FF" +
+			Number(match[0]).toString(16).padStart(2, "0") +
+			Number(match[1]).toString(16).padStart(2, "0") +
+			Number(match[2]).toString(16).padStart(2, "0")
+		).toUpperCase();
+	}
+
+	//엑셀 출력
+	async function exportExcel() {
+
+		const table = document.getElementById("tblData");
+
+		const workbook = new ExcelJS.Workbook();
+		const worksheet = workbook.addWorksheet("출장복명서");
+
+		const occupied = {};
+
+		function isOccupied(r, c) {
+			return occupied[r + "_" + c];
+		}
+
+		function markOccupied(sr, sc, er, ec) {
+
+			for (let r = sr; r <= er; r++) {
+				for (let c = sc; c <= ec; c++) {
+					if (r === sr && c === sc) {
+						continue;
+					}
+					occupied[r + "_" + c] = true;
+				}
+			}
+		}
+
+		let excelRow = 1;
+
+		Array.from(table.rows).forEach(function (tr) {
+
+			let excelCol = 2;
+
+			Array.from(tr.cells).forEach(function (td) {
+
+				while (isOccupied(excelRow, excelCol)) {
+					excelCol++;
+				}
+
+				const cell = worksheet.getCell(
+					excelRow,
+					excelCol
+				);
+
+				const text = td.innerText.trim().replace(/,/g, '');
+
+				if (text !== '' && !Number.isNaN(Number(text))) {
+					cell.value = Number(text);
+					cell.numFmt = '#,##0.##';
+				}
+				else {
+					cell.value = td.innerText.trim();
+				}
+
+				const style = window.getComputedStyle(td);
+
+				// 폰트
+				cell.font = {
+					name: "맑은 고딕",
+					size: 10,
+					bold:
+						style.fontWeight === "bold" ||
+						parseInt(style.fontWeight) >= 700
+				};
+
+				// 정렬
+				cell.alignment = {
+					vertical: "middle",
+					horizontal:
+						style.textAlign === "left"
+							? "left"
+							: style.textAlign === "right"
+							? "right"
+							: "center",
+					wrapText: true
+				};
+
+				// 배경색
+				const bgColor = rgbToArgb(style.backgroundColor);
+
+				if (bgColor) {
+
+					cell.fill = {
+						type: "pattern",
+						pattern: "solid",
+						fgColor: {
+							argb: bgColor
+						}
+					};
+				}
+
+				// 기본 테두리
+				cell.border = {
+					top: { style: "thin" },
+					left: { style: "thin" },
+					bottom: { style: "thin" },
+					right: { style: "thin" }
+				};
+
+				const colSpan = td.colSpan || 1;
+				const rowSpan = td.rowSpan || 1;
+
+				// 병합
+				if (colSpan > 1 || rowSpan > 1) {
+
+					worksheet.mergeCells(
+						excelRow,
+						excelCol,
+						excelRow + rowSpan - 1,
+						excelCol + colSpan - 1
+					);
+
+					markOccupied(
+						excelRow,
+						excelCol,
+						excelRow + rowSpan - 1,
+						excelCol + colSpan - 1
+					);
+				}
+				excelCol += colSpan;
+			});
+
+			worksheet.getRow(excelRow).height = excelRow < 10 ? 20 : 25;
+			
+			excelRow++;
+		});
+
+		//첫째줄, 여백줄 높이설정
+		worksheet.getRow(1).height = 60.75;
+		worksheet.getRow(12).height = 8;
+		worksheet.getRow(18).height = 8;
+		worksheet.getRow(34).height = 8;
+		
+		//너비 설정
+		worksheet.getColumn(1).width = 1.63;
+		worksheet.getColumn(2).width = 10.38;
+		worksheet.getColumn(3).width = 6.75;
+		worksheet.getColumn(4).width = 10.63;
+		worksheet.getColumn(5).width = 10.63;
+		worksheet.getColumn(6).width = 7.88;
+		worksheet.getColumn(7).width = 10.63;
+		worksheet.getColumn(8).width = 10.63;
+		worksheet.getColumn(9).width = 4.13;
+		worksheet.getColumn(10).width = 6.88;
+		worksheet.getColumn(11).width = 6.88;
+		worksheet.getColumn(12).width = 6.88;
+		worksheet.getColumn(13).width = 6.88;
+		worksheet.getColumn(14).width = 6.88;
+		worksheet.getColumn(15).width = 6.88;
+
+		worksheet.getCell("B1").font = {
+			name: "맑은 고딕",
+			size: 24,
+			bold: true
+		};
+
+		worksheet.getCell("B1").alignment = {
+			horizontal: "center",
+			vertical: "middle"
+		};
+
+		const headerCells = [ 
+			"B13","I13","I15","B14","B15","B17","B19"
+			,"B20","C20","F20","G20","H20","I20","J20","K20","N20",
+			,"B35"
+			,"B36","C36","F36","G36","H36","I36","J36","K36","N36",
+			, "B43"
+			];
+
+		headerCells.forEach(function(addr){
+
+			const cell = worksheet.getCell(addr);
+
+			cell.fill = {
+				type: "pattern",
+				pattern: "solid",
+				fgColor: {
+					argb: "FFD9D9D9"
+				}
+			};
+
+			cell.font = {
+				bold: true,
+				size: 10,
+				name: "맑은 고딕"
+			};
+		});
+
+		/////////////////////////////////////////////////////
+		// 굵은 외곽선
+		/////////////////////////////////////////////////////
+
+		for(let row = 2; row <= 43; row++){
+
+			worksheet.getCell(row,2).border.left = {
+				style:"medium"
+			};
+
+			worksheet.getCell(row,15).border.right = {
+				style:"medium"
+			};
+		}
+
+		for(let col = 2; col <= 15; col++){
+
+			worksheet.getCell(2,col).border.top = {
+				style:"medium"
+			};
+
+			worksheet.getCell(43,col).border.bottom = {
+				style:"medium"
+			};
+		}
+
+		/////////////////////////////////////////////////////
+		//선제거
+		worksheet.getCell(1,2).border = {}
+		
+		for(let col = 3; col <= 15; col++){
+			if(col == 9 && col == 10)
+				continue;
+
+			worksheet.getCell(15,col).border.left = {  };
+			worksheet.getCell(16,col).border.left = {  };
+			if(col != 15)
+			{
+				worksheet.getCell(15,col).border.right = {  };
+				worksheet.getCell(16,col).border.right = {  };
+			}
+		}
+
+		//도장 이미지 삽입
+		const svgElement = document.querySelector("#approver1_stamp svg");
+
+		const serializer = new XMLSerializer();
+		const svgString = serializer.serializeToString(svgElement);
+
+		const pngBase64 = await svgToPng(svgString);
+
+		const imageId = workbook.addImage({
+			base64: pngBase64,
+			extension: 'png'
+		});
+
+		worksheet.addImage(imageId, {
+			tl: { col: 9.9, row: 2.9 },
+			ext: { width: 42, height: 42 }
+		});
+
+		worksheet.getCell(3,10).value = "";
+
+		//합계함수 집어넣기
+		worksheet.getCell(`K33`).value = {
+    		formula: `SUM(K21:M32)`
+		};
+		//법인카드 합계 함수 넣기
+		worksheet.getCell(`K42`).value = { formula: `SUM(K37:M41)`};
+		//실수령액 합계 함수 넣기
+		worksheet.getCell(`K43`).value = { formula: `K33-K42` };
+
+		const buffer = await workbook.xlsx.writeBuffer();
+
+		saveAs(
+			new Blob([buffer]), document.getElementById("approvalNo").innerText + "_" + document.getElementById("approver1").innerText + 	".xlsx"
+		);
+	}
+
+	async function svgToPng(svgText) {
+    	return new Promise((resolve) => {
+			const svgBlob = new Blob([svgText], {
+				type: "image/svg+xml;charset=utf-8"
+			});
+
+			const url = URL.createObjectURL(svgBlob);
+			const img = new Image();
+
+			img.onload = () => {
+				const canvas = document.createElement("canvas");
+				canvas.width = img.width;
+				canvas.height = img.height;
+
+				const ctx = canvas.getContext("2d");
+				ctx.drawImage(img, 0, 0);
+
+				URL.revokeObjectURL(url);
+
+				resolve(
+					canvas.toDataURL("image/png")
+						.replace(/^data:image\/png;base64,/, "")
+				);
+			};
+
+			img.src = url;
+		});
+	}
+	</script>
+	</head>
+	<body>
+		<div>
+			<button onclick="history.back()">뒤로가기</button>
+			<button onclick="exportExcel()">엑셀 출력</button>
+		</div>
+		<table id="tblData">
+			<tr style="height:100px; font-size:2rem; font-weight:bold; width: 100%; text-align:center; border:none;">
+				<td colspan="14" style="border:none;">출장복명</td>
+			</tr>
+			<tr class="border_edge" style="border-top: 3px solid;">
+				<td rowspan="2" class="header">품의번호</th>
+				<td rowspan="2" colspan="6" id="approvalNo"></td>
+				<td class="header" rowspan="4">결재</td>
+				<td class="header" id="approver1"></td>
+				<td class="header" id="approver2"></td>
+				<td class="header" id="approver3"></td>
+				<td class="header" id="approver4"></td>
+				<td class="header" id="approver5"></td>
+				<td class="header" id="approver6"></td>
+			</tr>
+			<tr class="border_edge">
+				<td rowspan="3" id="approver1_stamp"></td>
+				<td rowspan="3"></td>
+				<td rowspan="3"></td>
+				<td rowspan="3"></td>
+				<td rowspan="3"></td>
+				<td rowspan="3"></td>
+			</tr>
+			<tr class="border_edge">
+				<td rowspan="2" class="header">작성일자</th>
+				<td rowspan="2" colspan="6" id="writeDate"></td>
+			</tr>
+			<tr class="border_edge">
+				
+			</tr>
+			<tr class="border_edge">
+				<td rowspan="2" class="header">기안부서</th>
+				<td rowspan="2" colspan="6"  id="dept"></td>
+				<td class="header" rowspan="4">합의</td>
+				<td class="header" id="accept1">　</td>
+				<td class="header" id="accept2"></td>
+				<td class="header" id="accept3"></td>
+				<td class="header" id="accept4"></td>
+				<td class="header" id="accept5"></td>
+				<td class="header" id="accept6"></td>
+			</tr>
+			<tr class="border_edge">
+				<td rowspan="3"></td>
+				<td rowspan="3"></td>
+				<td rowspan="3"></td>
+				<td rowspan="3"></td>
+				<td rowspan="3"></td>
+				<td rowspan="3"></td>
+			</tr>
+			<tr class="border_edge">
+				<td rowspan="2" class="header">기 안 자</th>
+				<td rowspan="2" colspan="6" id="writer"></td>
+			</tr>
+			<tr class="border_edge">
+				
+			</tr>
+			<tr class="border_edge">
+				<td class="header">수신 및 참조</th>
+				<td colspan="13"></td>
+			</tr>
+			<tr class="border_edge">
+				<td class="header">제&nbsp;&nbsp;&nbsp;&nbsp;목</th>
+				<td colspan="13" id="title" style="text-align: left; font-weight: bold;"></td>
+			</tr>
+			<tr class="border_edge">
+				<td colspan="14"></td>
+			</tr>
+			<tr class="border_edge">
+				<th>프로젝트</th>
+				<td colspan="2" id="projectCode"></td>
+				<td colspan="4" id="projectName" style="text-align: left;"></td>
+				<th colspan="2" >고 객 명</th>
+				<td colspan="5" id="customerName" style="text-align: left;"></td>
+			</tr>
+			<tr class="border_edge">
+				<th>출장지</th>
+				<td colspan="13" id="tripPlace" style="text-align: left;"></td>
+			</tr>
+			<tr class="border_edge">
+				<th rowspan="2" >신청기간</th>
+				<td style="width:50px;">출발 : </td>
+				<td style="width:100px; border-left:hidden;" id="startDate"></td>
+				<td style="width:100px; border-left:hidden; text-align: left;" id="startDateTime"></td>
+				<td style="width:35px; border-left:hidden;"></td>
+				<td style="width:60px; border-left:hidden;"></td>
+				<td style="width:60px; border-left:hidden;"></td>
+				<th rowspan="2" colspan="2" >출장기간</th>
+				<td style="width:50px;">출발 : </td>
+				<td style="width:100px; border-left:hidden;"  colspan="2" id="startDate2"></td>
+				<td style="width:100px; border-left:hidden; text-align: left;" id="startDateTime2"></td>
+				<td style="border-left:hidden;"></td>
+			</tr>
+			<tr class="border_edge">
+				<td >도착 : </td>
+				<td style="border-left:hidden;" id="endDate"></td>
+				<td style="border-left:hidden; text-align: left;"  id="endDateTime"></td>
+				<td style="border-left:hidden;"></td>
+				<td style="border-left:hidden;"></td>
+				<td style="border-left:hidden;"></td>
+				<td >도착 : </td>
+				<td style="border-left:hidden;" colspan="2" id="endDate2"></td>
+				<td style="border-left:hidden; text-align: left;"  id="endDateTime2"></td>
+				<td style="border-left:hidden;"></td>
+			</tr>
+			<tr class="border_edge">
+				<th>출장목적</th>
+				<td colspan="13" id="tripPurpose" style="text-align: left;"></td>
+			</tr>
+			<tr class="border_edge">
+				<td colspan="14"></td>
+			</tr>
+			<tr class="border_edge">
+				<th colspan="14">출장여비정산서</th>
+			</tr>
+			<tr class="border_edge">
+				<th>구분</th>
+				<th colspan="3">계산근거내역</th>
+				<th>적용횟수</th>
+				<th>단가</th>
+				<th>금액</th>
+				<th>통화</th>
+				<th>환율</th>
+				<th colspan="3">적용금액</th>
+				<th colspan="2">비고</th>
+			</tr>
+			<tr class="border_edge">
+				<td id="gubun1"></td>
+				<td colspan="3" id="contents1" style="text-align: left;"></td>
+				<td id="cnt1"></td>
+				<td id="price1"></td>
+				<td id="sumprice1"></td>
+				<td id="currency1"></td>
+				<td id="exchange1"></td>
+				<td colspan="3" id="totalPrice1"></td>
+				<td colspan="2" id="remark1"></td>
+			</tr>
+			<tr class="border_edge">
+				<td id="gubun2"></td>
+				<td colspan="3" id="contents2" style="text-align: left;"></td>
+				<td id="cnt2"></td>
+				<td id="price2"></td>
+				<td id="sumprice2"></td>
+				<td id="currency2"></td>
+				<td id="exchange2"></td>
+				<td colspan="3" id="totalPrice2"></td>
+				<td colspan="2" id="remark2"></td>
+			</tr>
+			<tr class="border_edge">
+				<td id="gubun3"></td>
+				<td colspan="3" id="contents3" style="text-align: left;"></td>
+				<td id="cnt3"></td>
+				<td id="price3"></td>
+				<td id="sumprice3"></td>
+				<td id="currency3"></td>
+				<td id="exchange3"></td>
+				<td colspan="3" id="totalPrice3"></td>
+				<td colspan="2" id="remark3"></td>
+			</tr>
+			<tr class="border_edge">
+				<td id="gubun4"></td>
+				<td colspan="3" id="contents4" style="text-align: left;"></td>
+				<td id="cnt4"></td>
+				<td id="price4"></td>
+				<td id="sumprice4"></td>
+				<td id="currency4"></td>
+				<td id="exchange4"></td>
+				<td colspan="3" id="totalPrice4"></td>
+				<td colspan="2" id="remark4"></td>
+			</tr>
+			<tr class="border_edge">
+				<td id="gubun5"></td>
+				<td colspan="3" id="contents5" style="text-align: left;"></td>
+				<td id="cnt5"></td>
+				<td id="price5"></td>
+				<td id="sumprice5"></td>
+				<td id="currency5"></td>
+				<td id="exchange5"></td>
+				<td colspan="3" id="totalPrice5"></td>
+				<td colspan="2" id="remark5"></td>
+			</tr>
+			<tr class="border_edge">
+				<td id="gubun6"></td>
+				<td colspan="3" id="contents6" style="text-align: left;"></td>
+				<td id="cnt6"></td>
+				<td id="price6"></td>
+				<td id="sumprice6"></td>
+				<td id="currency6"></td>
+				<td id="exchange6"></td>
+				<td colspan="3" id="totalPrice6"></td>
+				<td colspan="2" id="remark6"></td>
+			</tr>
+			<tr class="border_edge">
+				<td id="gubun7"></td>
+				<td colspan="3" id="contents7" style="text-align: left;"></td>
+				<td id="cnt7"></td>
+				<td id="price7"></td>
+				<td id="sumprice7"></td>
+				<td id="currency7"></td>
+				<td id="exchange7"></td>
+				<td colspan="3" id="totalPrice7"></td>
+				<td colspan="2" id="remark7"></td>
+			</tr>
+			<tr class="border_edge">
+				<td id="gubun8"></td>
+				<td colspan="3" id="contents8" style="text-align: left;"></td>
+				<td id="cnt8"></td>
+				<td id="price8"></td>
+				<td id="sumprice8"></td>
+				<td id="currency8"></td>
+				<td id="exchange8"></td>
+				<td colspan="3" id="totalPrice8"></td>
+				<td colspan="2" id="remark8"></td>
+			</tr>
+			<tr class="border_edge">
+				<td id="gubun9"></td>
+				<td colspan="3" id="contents9" style="text-align: left;"></td>
+				<td id="cnt9"></td>
+				<td id="price9"></td>
+				<td id="sumprice9"></td>
+				<td id="currency9"></td>
+				<td id="exchange9"></td>
+				<td colspan="3" id="totalPrice9"></td>
+				<td colspan="2" id="remark9"></td>
+			</tr>
+			<tr class="border_edge">
+				<td id="gubun10"></td>
+				<td colspan="3" id="contents10" style="text-align: left;"></td>
+				<td id="cnt10"></td>
+				<td id="price10"></td>
+				<td id="sumprice10"></td>
+				<td id="currency10"></td>
+				<td id="exchange10"></td>
+				<td colspan="3" id="totalPrice10"></td>
+				<td colspan="2" id="remark10"></td>
+			</tr>
+			<tr class="border_edge">
+				<td id="gubun11"></td>
+				<td colspan="3" id="contents11" style="text-align: left;"></td>
+				<td id="cnt11"></td>
+				<td id="price11"></td>
+				<td id="sumprice11"></td>
+				<td id="currency11"></td>
+				<td id="exchange11"></td>
+				<td colspan="3" id="totalPrice11"></td>
+				<td colspan="2" id="remark11"></td>
+			</tr>
+			<tr class="border_edge">
+				<td id="gubun12"></td>
+				<td colspan="3" id="contents12" style="text-align: left;"></td>
+				<td id="cnt12"></td>
+				<td id="price12"></td>
+				<td id="sumprice12"></td>
+				<td id="currency12"></td>
+				<td id="exchange12"></td>
+				<td colspan="3" id="totalPrice12"></td>
+				<td colspan="2" id="remark12"></td>
+			</tr>
+			<tr class="border_edge">
+				<td colspan="9" >합계</td>
+				<td colspan="3" id="allPrice"></td>
+				<td colspan="2"></td>
+			</tr>
+			<tr class="border_edge">
+				<td colspan="14"></td>
+			</tr>
+			<tr class="border_edge">
+				<th colspan="14">법인카드 사용내역</th>
+			</tr>
+			<tr class="border_edge">
+				<th>구분</th>
+				<th colspan="3">계산근거내역</th>
+				<th>적용횟수</th>
+				<th>단가</th>
+				<th>금액</th>
+				<th>통화</th>
+				<th>환율</th>
+				<th colspan="3">적용금액</th>
+				<th colspan="2">비고</th>
+			</tr>
+			<tr class="border_edge">
+				<td id="cgubun1"></td>
+				<td colspan="3" id="ccontents1" style="text-align: left;" ></td>
+				<td id="ccnt1"></td>
+				<td id="cprice1"></td>
+				<td id="csumprice1"></td>
+				<td id="ccurrency1"></td>
+				<td id="cexchange1"></td>
+				<td colspan="3" id="ctotalPrice1"></td>
+				<td colspan="2" id="cremark1"></td>
+			</tr>
+			<tr class="border_edge">
+				<td id="cgubun2"></td>
+				<td colspan="3" id="ccontents2"  style="text-align: left;"></td>
+				<td id="ccnt2"></td>
+				<td id="cprice2"></td>
+				<td id="csumprice2"></td>
+				<td id="ccurrency2"></td>
+				<td id="cexchange2"></td>
+				<td colspan="3" id="ctotalPrice2"></td>
+				<td colspan="2" id="cremark2"></td>
+			</tr>
+			<tr class="border_edge">
+				<td id="cgubun3"></td>
+				<td colspan="3" id="ccontents3" style="text-align: left;"></td>
+				<td id="ccnt3"></td>
+				<td id="cprice3"></td>
+				<td id="csumprice3"></td>
+				<td id="ccurrency3"></td>
+				<td id="cexchange3"></td>
+				<td colspan="3" id="ctotalPrice3"></td>
+				<td colspan="2" id="cremark3"></td>
+			</tr>
+			<tr class="border_edge">
+				<td id="cgubun4"></td>
+				<td colspan="3" id="ccontents4" style="text-align: left;"></td>
+				<td id="ccnt4"></td>
+				<td id="cprice4"></td>
+				<td id="csumprice4"></td>
+				<td id="ccurrency4"></td>
+				<td id="cexchange4"></td>
+				<td colspan="3" id="ctotalPrice4"></td>
+				<td colspan="2" id="cremark4"></td>
+			</tr>
+			<tr class="border_edge">
+				<td id="cgubun5"></td>
+				<td colspan="3" id="ccontents5" style="text-align: left;"></td>
+				<td id="ccnt5"></td>
+				<td id="cprice5"></td>
+				<td id="csumprice5"></td>
+				<td id="ccurrency5"></td>
+				<td id="cexchange5"></td>
+				<td colspan="3" id="ctotalPrice5"></td>
+				<td colspan="2" id="cremark5"></td>
+			</tr>
+			<tr class="border_edge">
+				<td colspan="9" >합계</td>
+				<td colspan="3" id="callPrice"></td>
+				<td colspan="2"></td>
+			</tr>
+			<tr class="border_edge">
+				<th colspan="9" >실수령액</td>
+				<td colspan="3" id="total_allPrice"></td>
+				<td colspan="2"></td>
+			</tr>
+		</table>
+	</body>
+</html>
