@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>출장 문서함</title>
+
+<style>
+body{
+    font-family:맑은고딕;
+    margin:20px;
+}
+
+.container{
+    display:flex;
+    gap:20px;
+}
+
+.right{
+    width:100%;
+}
+
+input,select,textarea{
+    width:100%;
+    padding:8px;
+    box-sizing:border-box;
+    margin-top:5px;
+}
+
+textarea{
+    height:150px;
+}
+
+button{
+    padding:8px 15px;
+    margin-top:10px;
+    cursor:pointer;
+}
+
+table{
+    width:100%;
+    border-collapse:collapse;
+    margin-top:10px;
+}
+
+table th{
+    background:#4472C4;
+    color:white;
+}
+
+table th,
+table td{
+    border:1px solid #ccc;
+    padding:8px;
+    text-align:center;
+}
+
+.selected{
+    background:#FFF2CC;
+}
+
+.toolbar{
+    display:flex;
+    gap:10px;
+    margin-bottom:10px;
+}
+</style>
+<script src="common.js"></script>
+</head>
+
+<body>
+
+<h2>출장 문서함</h2>
+<div style="display: flex; flex-direction: row;">
+    <div style="width: 50%;">
+        <button onclick="openPage('BUSINESS_TRIP')">출장신청서 작성</button>
+        <button onclick="openPage('BUSINESS_REPORT')">출장복명서 작성</button>
+        <button onclick="loadList()">문서함 조회</button>
+    </div>
+    <div  style="display: flex; flex-direction: row; width: 30%;">
+        <button onclick="backupLocalStorage()">
+            📥 문서백업
+        </button>
+        <input
+            type="file"
+            accept=".json"
+            onchange="restoreLocalStorage(event)">
+    </div>
+</div>
+
+
+<div class="container">
+
+    <div class="right">
+
+        <h3>문서 목록</h3>
+
+        <div class="toolbar">
+            <select id="searchType" onchange="loadList()">
+                <option value="">전체</option>
+                <option value="출장신청서">출장신청서</option>
+                <option value="출장복명서">출장복명서</option>
+                <option value="경비신청서">경비신청서</option>
+                <option value="품의서">품의서</option>
+            </select>
+
+            <input
+                type="text"
+                id="keyword"
+                placeholder="제목 검색"
+                onkeyup="loadList()">
+        </div>
+
+        <table>
+            <thead>
+            <tr>
+                <th style="width: 15%;">문서번호</th>
+                <th style="width: 10%;">종류</th>
+                <th style="width: 50%;">제목</th>
+                <th style="width: 10%;">작성일</th>
+                <th style="width: 10%;">관리</th>
+            </tr>
+            </thead>
+
+            <tbody id="tbody"></tbody>
+        </table>
+
+    </div>
+
+</div>
+
+<script>
+
+
+init();
+
+function init(){
+    if(!localStorage.getItem(STORAGE_KEY)){
+        localStorage.setItem(STORAGE_KEY,"[]");
+    }
+    loadList();
+}
+
+
+function loadList(){
+
+    let docs=getDocuments();
+
+    let type=document.getElementById("searchType").value;
+    let keyword=document.getElementById("keyword").value.toLowerCase();
+
+    if(type){
+        docs=docs.filter(x=>x.type===type);
+    }
+
+    if(keyword){
+        docs=docs.filter(x=>
+            x.title.toLowerCase().includes(keyword)
+        );
+    }
+
+    let html="";
+
+    docs.forEach(d=>{
+
+        html+=`
+        <tr ondblclick="openDocument('${d.id}')">
+            <td>${d.documentNo}</td>
+            <td>${d.formType}</td>
+            <td>${d.title}</td>
+            <td>${d.createDate}</td>
+            <td>`;
+        html+= d.formType == "BUSINESS_TRIP" ? 
+        ` <button onclick="openReportDocument('${d.id}')">복명작성</button> ` : "";
+        html+= `<button onclick="deleteDocument('${d.id}')">삭제</button>
+            </td>
+        </tr>
+        `;
+    });
+
+    document.getElementById("tbody").innerHTML=html;
+}
+
+function deleteDocument(id){
+
+    if(!confirm("삭제하시겠습니까?")){
+        return;
+    }
+
+    let docs=getDocuments();
+
+    docs=docs.filter(x=>x.id!==id);
+
+    saveDocuments(docs);
+
+    loadList();
+}
+
+function openDocument(id){
+
+    const docs=getDocuments();
+    const doc= docs.find(x=>x.id===id);
+
+    sessionStorage.setItem( "selectedDocId", id );
+
+    switch(doc.formType){
+
+        case "BUSINESS_TRIP":
+
+            location.href= "businesstrip_form.html";
+            break;
+
+        case "BUSINESS_REPORT":
+            location.href= "businesstripReport_form.html";
+
+            break;
+    }
+}
+
+function openReportDocument(id){
+
+    const docs=getDocuments();
+    const doc= docs.find(x=>x.id===id);
+
+    sessionStorage.setItem( "selectedDocId", id );
+    location.href= "businesstripReport_form.html";
+
+}
+
+function openPage(page){
+
+    sessionStorage.setItem( "selectedDocId", "" );
+
+    switch(page){
+
+        case "BUSINESS_TRIP":
+            location.href= "businesstrip_form.html";
+            break;
+
+        case "BUSINESS_REPORT":
+            location.href= "businesstripReport_form.html";
+            break;
+    }
+}
+
+function backupLocalStorage() {
+
+    const data = localStorage.getItem(STORAGE_KEY);
+
+    const blob = new Blob(
+        [data],
+        { type: "application/json" }
+    );
+
+    const a = document.createElement("a");
+
+    a.href = URL.createObjectURL(blob);
+
+    a.download =`approval_documents_${new Date()
+            .toISOString()
+            .substring(0, 10)
+            .replace(/-/g, "")}.json`;
+
+    a.click();
+
+    URL.revokeObjectURL(a.href);
+}
+
+function restoreLocalStorage(event) {
+
+    const file = event.target.files[0];
+
+    if (!file) return;
+
+    const reader = new FileReader();
+
+    reader.onload = function(e) {
+        try {
+
+            const json = JSON.parse(e.target.result);
+
+            localStorage.setItem(
+                STORAGE_KEY,
+                JSON.stringify(json)
+            );
+
+            alert("복원 완료");
+            location.reload();
+
+        } catch {
+            alert("올바른 백업파일이 아닙니다.");
+        }
+    };
+
+    reader.readAsText(file);
+}
+</script>
+
+</body>
+</html>
